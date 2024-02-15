@@ -1,0 +1,62 @@
+version: "3"
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: highload-queue-nginx
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ./docker/nginx/conf/nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./:/www/
+    depends_on:
+      - php-fpm
+    networks:
+      - common
+
+  php-fpm:
+    image: yiisoftware/yii2-php:8.2-fpm
+    container_name: highload-queue-php
+    restart: always
+    environment:
+      - TZ=${TZ}
+      - XDEBUG_MODE=debug
+      - XDEBUG_SESSION=phpstorm
+      - PHP_IDE_CONFIG=serverName=cli
+    working_dir: /www/
+    volumes:
+      - ./:/www/
+    networks:
+      - common
+
+  rabbitmq:
+    image: rabbitmq:3.11.16-management-alpine
+    restart: always
+    container_name: highload-queue-rabbitmq
+    hostname: rabbitmq
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS}
+    ports:
+      - "127.0.0.1:5672:5672"
+      - "15672:15672"
+    volumes:
+      - ${VAR_DIR}/rabbitmq:/var/lib/rabbitmq/mnesia
+    networks:
+      - common
+
+  redis:
+    image: redis:5.0.5
+    container_name: highload-queue-redis
+    restart: always
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    ports:
+      - ${REDIS_PORT}:6379
+    volumes:
+      - ${VAR_DIR}/redis:/data
+    networks:
+      - common
+
+networks:
+  common:
+    driver: bridge
